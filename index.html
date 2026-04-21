@@ -387,7 +387,7 @@ function viewChangePin() {
       <div class="page"><div class="inner" style="padding-top:16px">
         ${field('New PIN (min 4 digits)', `<input type="password" inputmode="numeric" class="inp" id="new-pin" value="${esc(S.newPin)}" placeholder="New PIN" />`)}
         ${field('Confirm PIN', `<input type="password" inputmode="numeric" class="inp" id="conf-pin" value="${esc(S.confirmPin)}" placeholder="Confirm PIN" />`)}
-        ${S.newPin && S.confirmPin && S.newPin !== S.confirmPin ? '<div style="color:var(--red);font-size:13px;margin-bottom:12px">PINs don\'t match</div>' : ''}
+        <div id='pin-mismatch' style='color:var(--red);font-size:13px;margin-bottom:12px;display:${S.newPin && S.confirmPin && S.newPin !== S.confirmPin ? "block" : "none"}'>PINs don't match</div>
         ${msg ? `<div style="color:${isOk?'var(--teal)':'var(--red)'};font-size:13px;margin-bottom:12px">${esc(msg.slice(3))}</div>` : ''}
         <div class="brow">
           <button class="btn bg" onclick="goTable()">Cancel</button>
@@ -524,8 +524,17 @@ function bindChangePin() {
   const np  = document.getElementById('new-pin');
   const cp  = document.getElementById('conf-pin');
   const btn = document.getElementById('save-pin');
-  if (np)  np.addEventListener('input',   e => { S.newPin = e.target.value; S.pinMsg = ''; render(); });
-  if (cp)  cp.addEventListener('input',   e => { S.confirmPin = e.target.value; S.pinMsg = ''; render(); });
+
+  function syncPinUI() {
+    // Update mismatch message without re-rendering
+    const mm = document.getElementById('pin-mismatch');
+    if (mm) mm.style.display = (S.newPin && S.confirmPin && S.newPin !== S.confirmPin) ? 'block' : 'none';
+    // Enable/disable save button
+    if (btn) btn.disabled = S.newPin.length < 4 || S.newPin !== S.confirmPin;
+  }
+
+  if (np)  np.addEventListener('input',   e => { S.newPin = e.target.value; S.pinMsg = ''; syncPinUI(); });
+  if (cp)  cp.addEventListener('input',   e => { S.confirmPin = e.target.value; S.pinMsg = ''; syncPinUI(); });
   if (cp)  cp.addEventListener('keydown', e => { if (e.key==='Enter') doChangePin(); });
   if (btn) btn.addEventListener('click', doChangePin);
 }
