@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>⚡ EV Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #0d1520; --bg2: #0a1320; --bg3: #111e30; --bg4: #0d1a2a;
+      --border: #1a2a3a; --border2: #2a3a54;
+      --text:   #e2e8f0; --muted: #4a6070; --muted2: #2a4060;
+      --teal:   #2dd4bf; --blue: #60a5fa; --amber: #f59e0b;
+      --purple: #a78bfa; --red: #f87171;
+      --font:   'DM Sans', system-ui, sans-serif;
+      --mono:   'DM Mono', monospace;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+    input, button, textarea { font-family: inherit; }
+    button { cursor: pointer; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.4); }
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    #app { min-height: 100vh; display: flex; flex-direction: column; }
+    .page { flex: 1; overflow-y: auto; padding: 14px 14px 88px; }
+    .inner { max-width: 500px; margin: 0 auto; }
+
+    /* topbar */
+    .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); height: 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; flex-shrink: 0; }
+    .topbar-l { display: flex; align-items: center; gap: 10px; }
+    .brand { font-family: var(--mono); color: var(--teal); font-size: 13px; letter-spacing: 1.8px; }
+    .back-btn { background: none; border: none; color: var(--teal); font-size: 26px; line-height: 1; padding: 2px 6px 2px 0; }
+    .topbar-r { display: flex; align-items: center; gap: 8px; }
+
+    /* stat cards */
+    .stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .stat { flex: 1 1 110px; background: var(--bg3); border-radius: 12px; padding: 12px 14px; }
+    .stat-lbl { font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; font-family: var(--mono); margin-bottom: 5px; }
+    .stat-val { font-size: 20px; font-family: var(--mono); font-weight: 700; line-height: 1; }
+    .stat-unit { font-size: 11px; color: var(--muted2); margin-top: 2px; }
+
+    /* streak */
+    .streak { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+    .streak-lbl { font-size: 10px; color: var(--muted2); letter-spacing: 1.2px; text-transform: uppercase; font-family: var(--mono); margin-bottom: 8px; }
+    .streak-dots { display: flex; gap: 3px; }
+    .dot { flex: 1; height: 16px; border-radius: 3px; background: var(--border); opacity: .5; }
+    .dot.hit { background: var(--teal); opacity: 1; }
+
+    /* session cards */
+    .scard { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; transition: border-color .15s; }
+    .scard.ed { cursor: pointer; }
+    .scard.ed:hover { border-color: rgba(45,212,191,.35); }
+    .crow1 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .cdate { font-family: var(--mono); color: var(--teal); font-size: 13px; }
+    .ckwh  { font-family: var(--mono); color: var(--blue); font-size: 16px; font-weight: 700; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .chips:last-child { margin-bottom: 0; }
+    .chip { background: var(--bg4); border-radius: 8px; padding: 4px 10px; font-size: 12px; }
+    .cl { color: var(--muted2); }
+    .cv { font-family: var(--mono); font-weight: 700; }
+    .cnote { color: var(--muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* form */
+    .field { margin-bottom: 14px; }
+    .flbl { font-size: 11px; color: #6b7fa3; letter-spacing: .4px; margin-bottom: 5px; font-weight: 500; }
+    .fhint { font-size: 11px; color: var(--muted2); margin-top: 3px; }
+    .inp { background: var(--bg4); border: 1px solid var(--border2); color: var(--text); border-radius: 8px; padding: 11px 12px; font-size: 16px; width: 100%; outline: none; transition: border-color .15s; -webkit-appearance: none; appearance: none; }
+    .inp:focus { border-color: var(--teal); }
+    .ro  { background: var(--bg2); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 11px 12px; font-size: 14px; font-family: var(--mono); }
+    textarea.inp { resize: vertical; min-height: 80px; }
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ferr { background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.3); border-radius: 8px; padding: 10px 12px; color: var(--red); font-size: 13px; margin-bottom: 16px; }
+
+    /* buttons */
+    .btn { border-radius: 8px; padding: 12px 18px; font-size: 15px; border: none; line-height: 1; transition: opacity .15s; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .bp { background: linear-gradient(135deg, var(--teal), #0ea5e9); color: #0d1520; font-weight: 700; }
+    .bg { background: transparent; border: 1px solid var(--border2); color: #94a3b8; }
+    .bd { background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.3); color: var(--red); }
+    .bsm { padding: 7px 12px; font-size: 13px; }
+    .bico { background: none; border: 1px solid var(--border2); color: #94a3b8; border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+    .brow { display: flex; gap: 10px; }
+    .brow .bp { flex: 2; } .brow .bg { flex: 1; }
+
+    /* FAB */
+    .fab { position: fixed; bottom: 24px; right: 20px; width: 58px; height: 58px; border-radius: 50%; background: linear-gradient(135deg, var(--teal), #0ea5e9); border: none; color: #0d1520; font-size: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(45,212,191,.45); z-index: 50; }
+
+    /* toast */
+    .toast { position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--teal); color: var(--teal); border-radius: 10px; padding: 10px 20px; font-size: 13px; font-family: var(--mono); z-index: 200; opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; }
+
+    /* banners */
+    .banner { border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; display: flex; align-items: flex-start; gap: 8px; }
+    .banner-info { background: var(--bg3); border: 1px solid rgba(45,212,191,.25); color: var(--teal); }
+    .banner-err  { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.3); color: var(--red); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; flex-shrink: 0; }
+
+    /* login */
+    .login-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .login-box { width: 100%; max-width: 340px; }
+    .pin-inp { font-size: 24px !important; letter-spacing: 8px !important; text-align: center !important; }
+    .pin-err { color: var(--red); font-size: 13px; text-align: center; margin-bottom: 12px; }
+    .login-hint { text-align: center; color: var(--muted2); font-size: 12px; margin-top: 16px; }
+    .login-hint span { font-family: var(--mono); color: var(--muted); }
+
+    /* empty */
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted2); }
+    .empty-ico { font-size: 40px; margin-bottom: 12px; }
+
+    @media (max-width: 400px) { .g2 { grid-template-columns: 1fr; } .stat-val { font-size: 17px; } }
+  </style>
+</head>
+<body>
+<div id="app"><div style="display:flex;align-items:center;justify-content:center;height:100vh;color:var(--teal);font-family:monospace;font-size:13px;letter-spacing:2px">LOADING…</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SUPABASE_URL  = 'https://bjoowgyvoiufsuxwllbt.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_0hgLMWyLUKcGpuhdz8AZWQ_PPE2RrE0';
+const DEFAULT_PIN   = '1234';
+const PIN_LS_KEY    = 'evt_pin_v1';
+
+// ── DATABASE SERVICE ──────────────────────────────────────────────────────────
+// Uses Supabase REST API directly via fetch — no JS client library needed.
+// This avoids the DataCloneError caused by the Supabase SDK's internal
+// Web Worker trying to postMessage un-cloneable Headers objects.
+// To swap backends, only edit this object.
+const REST = `${SUPABASE_URL}/rest/v1`;
+const HEADERS = {
+  'apikey':        SUPABASE_ANON,
+  'Authorization': `Bearer ${SUPABASE_ANON}`,
+  'Content-Type':  'application/json',
+  'Prefer':        'return=minimal',
+};
+
+async function sbFetch(path, options = {}) {
+  try {
+    const res = await fetch(REST + path, { ...options, headers: { ...HEADERS, ...(options.headers||{}) } });
+    const text = await res.text();
+    const body = text ? JSON.parse(text) : null;
+    if (!res.ok) {
+      const msg = (body && (body.message || body.error || body.hint)) || `HTTP ${res.status}`;
+      return { data: null, error: msg };
+    }
+    return { data: body, error: null };
+  } catch (e) {
+    return { data: null, error: e.message || String(e) };
+  }
+}
+
+const db = {
+  async loadSessions() {
+    const { data, error } = await sbFetch('/ev_sessions?select=*&order=date.desc');
+    return { data: Array.isArray(data) ? data : [], error };
+  },
+  async upsertSession(session) {
+    return sbFetch('/ev_sessions?on_conflict=id', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(session),
+    });
+  },
+  async deleteSession(id) {
+    return sbFetch(`/ev_sessions?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+  loadPin()  { try { return localStorage.getItem(PIN_LS_KEY) || DEFAULT_PIN; } catch { return DEFAULT_PIN; } },
+  savePin(p) { try { localStorage.setItem(PIN_LS_KEY, p); } catch {} },
+};
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+const fmt      = d => { if (!d) return ''; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; };
+const num      = v => parseFloat(v);
+const todayISO = () => new Date().toISOString().split('T')[0];
+const uid      = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+const esc      = s => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+const calcTotal  = f => { const v = num(f.end_power) - num(f.start_power); return (isNaN(v) || v <= 0) ? null : +v.toFixed(2); };
+const calcKwhPct = f => { const p = num(f.end_charge) - num(f.start_charge), k = num(f.end_power) - num(f.start_power); return (!p || !k || p <= 0) ? null : +(k / p).toFixed(3); };
+const calcEff    = (km, kw) => (!km || !kw || kw === 0) ? null : (km / kw).toFixed(2);
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+const S = {
+  sessions: [], pin: DEFAULT_PIN,
+  dbReady: false, dbError: null,
+  isEditor: false,
+  view: 'table',   // table | login | form | changePin
+  selected: null,
+  pinInput: '', pinError: '',
+  newPin: '', confirmPin: '', pinMsg: '',
+  form: {}, formError: '',
+  delConfirm: false, saving: false,
+};
+
+function set(patch) {
+  Object.assign(S, typeof patch === 'function' ? patch(S) : patch);
+  render();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function init() {
+  S.pin = db.loadPin();
+  const { data, error } = await db.loadSessions();
+  S.sessions = data;
+  S.dbReady  = true;
+  S.dbError  = error;
+  render();
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function doLogin() {
+  if (!S.dbReady) { set({ pinError: 'Still connecting, please wait…' }); return; }
+  if (S.pinInput.trim() === S.pin) {
+    set({ isEditor: true, pinError: '', pinInput: '', view: 'table' });
+  } else {
+    set({ pinError: 'Wrong PIN — try again.' });
+  }
+}
+
+async function doChangePin() {
+  if (S.newPin.length < 4)           { set({ pinMsg: 'err:Minimum 4 digits.' });    return; }
+  if (S.newPin !== S.confirmPin)     { set({ pinMsg: 'err:PINs don\'t match.' });   return; }
+  db.savePin(S.newPin);
+  set({ pin: S.newPin, newPin: '', confirmPin: '', pinMsg: 'ok:PIN updated ✓' });
+  setTimeout(() => set({ pinMsg: '', view: 'table' }), 1200);
+}
+
+function openNew() {
+  set({ selected: null, formError: '', delConfirm: false, view: 'form',
+    form: { date: todayISO(), start_charge:'', start_power:'', end_charge:'', end_power:'', km_driven:'', notes:'' } });
+}
+
+function openEdit(idx) {
+  const s = S.sessions[idx];
+  if (!s) return;
+  set({ selected: s, formError: '', delConfirm: false, view: 'form',
+    form: { date: s.date, start_charge: s.start_charge, start_power: s.start_power,
+            end_charge: s.end_charge, end_power: s.end_power,
+            km_driven: s.km_driven ?? '', notes: s.notes ?? '' } });
+}
+
+async function doSave() {
+  const f = S.form;
+  if (!f.date || f.start_charge==='' || f.start_power==='' || f.end_charge==='' || f.end_power==='') {
+    set({ formError: 'Please fill in all required fields (*).' }); return;
+  }
+  const total = calcTotal(f);
+  if (!total) { set({ formError: 'Ending power reading must be greater than starting.' }); return; }
+
+  set({ saving: true, formError: '' });
+  const session = {
+    id:           S.selected?.id || uid(),
+    date:         f.date,
+    start_charge: num(f.start_charge),
+    start_power:  num(f.start_power),
+    end_charge:   num(f.end_charge),
+    end_power:    num(f.end_power),
+    total_kwh:    total,
+    kwh_per_pct:  calcKwhPct(f),
+    km_driven:    f.km_driven !== '' ? num(f.km_driven) : null,
+    notes:        f.notes || null,
+  };
+
+  const { error } = await db.upsertSession(session);
+  if (error) { set({ saving: false, formError: 'Save failed: ' + error }); return; }
+
+  let updated = S.selected
+    ? S.sessions.map(s => s.id === S.selected.id ? session : s)
+    : [session, ...S.sessions];
+  updated.sort((a, b) => b.date.localeCompare(a.date));
+  set({ sessions: updated, saving: false, view: 'table' });
+  showToast(S.selected ? 'Session updated ✓' : 'Session saved ✓');
+}
+
+async function doDelete() {
+  set({ saving: true });
+  const { error } = await db.deleteSession(S.selected.id);
+  if (error) { set({ saving: false, formError: 'Delete failed: ' + error }); return; }
+  set({ sessions: S.sessions.filter(s => s.id !== S.selected.id), saving: false, view: 'table' });
+  showToast('Session deleted');
+}
+
+function doExport() {
+  const hdr  = 'Date,Start%,StartPower,End%,EndPower,TotalKwh,kWh_pct,kmDriven,km_kWh,Notes';
+  const rows = S.sessions.map(s => [
+    s.date, s.start_charge, s.start_power, s.end_charge, s.end_power,
+    s.total_kwh, s.kwh_per_pct ?? '',
+    s.km_driven ?? '', s.km_driven ? calcEff(s.km_driven, s.total_kwh) : '',
+    '"' + (s.notes || '').replace(/"/g, "'") + '"'
+  ].join(','));
+  const blob = new Blob([[hdr, ...rows].join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ev-sessions.csv';
+  a.click();
+  showToast('CSV exported!');
+}
+
+// ── NAVIGATION (called from HTML onclick) ─────────────────────────────────────
+function goTable()     { set({ view: 'table',     pinError: '', formError: '' }); }
+function goLogin()     { S.pinInput = ''; S.pinError = ''; set({ view: 'login' }); }
+function goChangePin() { S.newPin = ''; S.confirmPin = ''; S.pinMsg = ''; set({ view: 'changePin' }); }
+function fSet(k, v)    { S.form[k] = v; S.formError = ''; render(); }
+
+// ── RENDER HELPERS ────────────────────────────────────────────────────────────
+const chip = (label, val, color) =>
+  `<div class="chip"><span class="cl">${label} </span><span class="cv" style="color:${color}">${esc(String(val))}</span></div>`;
+
+const statCard = (label, value, unit, color) =>
+  `<div class="stat" style="border:1px solid ${color}30">
+    <div class="stat-lbl">${label}</div>
+    <div class="stat-val" style="color:${color}">${value ?? '<span style="opacity:.35">—</span>'}</div>
+    ${unit ? `<div class="stat-unit">${unit}</div>` : ''}
+  </div>`;
+
+const topBar = (title, backFn, rightHtml = '') =>
+  `<div class="topbar">
+    <div class="topbar-l">
+      ${backFn ? `<button class="back-btn" onclick="${backFn}">‹</button>` : ''}
+      <span class="brand">${backFn ? esc(title) : '⚡ EV TRACKER'}</span>
+    </div>
+    <div class="topbar-r">${rightHtml}</div>
+  </div>`;
+
+const field = (label, inputHtml, hint = '') =>
+  `<div class="field">
+    <div class="flbl">${label}</div>
+    ${inputHtml}
+    ${hint ? `<div class="fhint">${hint}</div>` : ''}
+  </div>`;
+
+const inp = (type, key, val, ph = '') =>
+  `<input type="${type}" ${type==='number'?'inputmode="decimal"':''} class="inp"
+    value="${esc(String(val ?? ''))}" placeholder="${ph}"
+    oninput="fSet('${key}',this.value)" />`;
+
+// ── VIEWS ─────────────────────────────────────────────────────────────────────
+function viewLogin() {
+  return `
+    <div style="display:flex;flex-direction:column;min-height:100vh">
+      ${topBar('Editor Login', 'goTable()')}
+      <div class="login-wrap">
+        <div class="login-box">
+          <div style="font-size:44px;text-align:center;margin-bottom:10px">🔒</div>
+          <div style="color:var(--muted);font-size:14px;text-align:center;margin-bottom:28px">Enter your PIN to unlock editing</div>
+          ${field('PIN', `<input type="password" inputmode="numeric" class="inp pin-inp" id="pin-inp" value="${esc(S.pinInput)}" placeholder="••••" autocomplete="off" />`)}
+          ${S.pinError ? `<div class="pin-err">${esc(S.pinError)}</div>` : ''}
+          ${!S.dbReady ? `<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:12px">Connecting to cloud…</div>` : ''}
+          <button class="btn bp" style="width:100%;font-size:16px;padding:14px" id="login-btn" ${!S.dbReady?'disabled':''}>Unlock</button>
+          <div class="login-hint">Default PIN: <span>1234</span></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function viewChangePin() {
+  const msg = S.pinMsg;
+  const isOk = msg.startsWith('ok:');
+  return `
+    <div style="display:flex;flex-direction:column;min-height:100vh">
+      ${topBar('Change PIN', 'goTable()')}
+      <div class="page"><div class="inner" style="padding-top:16px">
+        ${field('New PIN (min 4 digits)', `<input type="password" inputmode="numeric" class="inp" id="new-pin" value="${esc(S.newPin)}" placeholder="New PIN" />`)}
+        ${field('Confirm PIN', `<input type="password" inputmode="numeric" class="inp" id="conf-pin" value="${esc(S.confirmPin)}" placeholder="Confirm PIN" />`)}
+        ${S.newPin && S.confirmPin && S.newPin !== S.confirmPin ? '<div style="color:var(--red);font-size:13px;margin-bottom:12px">PINs don\'t match</div>' : ''}
+        ${msg ? `<div style="color:${isOk?'var(--teal)':'var(--red)'};font-size:13px;margin-bottom:12px">${esc(msg.slice(3))}</div>` : ''}
+        <div class="brow">
+          <button class="btn bg" onclick="goTable()">Cancel</button>
+          <button class="btn bp" id="save-pin" ${S.newPin.length<4||S.newPin!==S.confirmPin?'disabled':''}>Save PIN</button>
+        </div>
+      </div></div>
+    </div>`;
+}
+
+function viewForm() {
+  const f   = S.form;
+  const sel = S.selected;
+  const total  = calcTotal(f);
+  const kwhpct = calcKwhPct(f);
+  const rightHtml = S.isEditor && sel
+    ? S.delConfirm
+      ? `<button class="btn bd bsm" id="conf-del">Confirm Delete</button>`
+      : `<button class="btn bd bsm" id="del-btn">Delete</button>`
+    : '';
+  return `
+    <div style="display:flex;flex-direction:column;min-height:100vh">
+      ${topBar(sel ? 'Edit Session' : 'New Session', 'goTable()', rightHtml)}
+      <div class="page"><div class="inner">
+        ${field('Date *', `<input type="date" class="inp" id="f-date" value="${esc(f.date||'')}" />`)}
+        <div class="g2">
+          ${field('Start Charge % *', inp('number','start_charge',f.start_charge,'e.g. 20'))}
+          ${field('End Charge % *',   inp('number','end_charge',  f.end_charge,  'e.g. 85'))}
+          ${field('Start Power (kWh) *', inp('number','start_power',f.start_power,'meter reading'))}
+          ${field('End Power (kWh) *',   inp('number','end_power',  f.end_power,  'after charge'))}
+        </div>
+        <div class="g2">
+          ${field('Total kWh — auto', `<div class="ro">${total != null ? total + ' kWh' : '—'}</div>`)}
+          ${field('kWh / % — auto',   `<div class="ro">${kwhpct != null ? kwhpct : '—'}</div>`)}
+        </div>
+        ${field('km Driven (since last charge)', inp('number','km_driven',f.km_driven,'e.g. 230'), 'Derives km/kWh efficiency for this session')}
+        ${field('Notes', `<textarea class="inp" id="f-notes" placeholder="Weather, location, driving conditions…">${esc(f.notes||'')}</textarea>`)}
+        ${S.formError ? `<div class="ferr">${esc(S.formError)}</div>` : ''}
+        <div class="brow">
+          <button class="btn bg" onclick="goTable()">Cancel</button>
+          <button class="btn bp" id="save-btn" ${S.saving?'disabled':''}>${S.saving?'Saving…':(sel?'Save Changes':'Add Session')}</button>
+        </div>
+      </div></div>
+    </div>`;
+}
+
+function viewTable() {
+  const ss = S.sessions;
+  const totalKwh = ss.reduce((a,s) => a + (s.total_kwh||0), 0).toFixed(1);
+  const totalKm  = ss.reduce((a,s) => a + (s.km_driven||0), 0).toFixed(0);
+  const effS     = ss.filter(s => s.km_driven && s.total_kwh);
+  const avgEff   = effS.length ? (effS.reduce((a,s) => a + s.km_driven/s.total_kwh, 0) / effS.length).toFixed(2) : null;
+
+  const streak = Array.from({length:14}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate() - (13 - i));
+    const iso = d.toISOString().split('T')[0];
+    return `<div class="dot${ss.some(s=>s.date===iso)?' hit':''}" title="${iso}"></div>`;
+  }).join('');
+
+  const cards = ss.length === 0
+    ? `<div class="empty">
+        <div class="empty-ico">⚡</div>
+        <div style="font-family:var(--mono);font-size:13px">No sessions yet.</div>
+        <div style="margin-top:8px;font-size:13px;color:#3a5070">${S.isEditor ? 'Tap + to add your first charge.' : 'Login as editor to add sessions.'}</div>
+       </div>`
+    : ss.map((s, i) => {
+        const eff = calcEff(s.km_driven, s.total_kwh);
+        return `<div class="scard${S.isEditor?' ed':''}" onclick="${S.isEditor?`openEdit(${i})`:''}" >
+          <div class="crow1">
+            <span class="cdate">${fmt(s.date)}</span>
+            <span class="ckwh">${s.total_kwh} kWh</span>
+          </div>
+          <div class="chips">
+            ${chip('Start', s.start_charge+'%', '#6b7fa3')}
+            ${chip('End',   s.end_charge+'%',   'var(--teal)')}
+            ${chip('Δ', '+'+(s.end_charge - s.start_charge)+'%', 'var(--blue)')}
+          </div>
+          <div class="chips">
+            ${chip('kWh/%', (s.kwh_per_pct==null||isNaN(s.kwh_per_pct))?'—':s.kwh_per_pct, '#6b7fa3')}
+            ${s.km_driven != null ? chip('km', s.km_driven, 'var(--amber)') : ''}
+            ${eff ? chip('km/kWh', eff, 'var(--purple)') : ''}
+            ${s.notes ? `<div class="chip cnote">📝 ${esc(s.notes)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+
+  const rightHtml = `
+    <button class="bico" id="exp-btn">↓ CSV</button>
+    ${S.isEditor
+      ? `<button style="background:none;border:none;color:var(--teal);font-size:12px;font-family:var(--mono);cursor:pointer;padding:6px 4px" onclick="goChangePin()">✓ Editor</button>`
+      : `<button class="bico" onclick="goLogin()">🔒 Login</button>`}`;
+
+  return `
+    <div style="display:flex;flex-direction:column;min-height:100vh">
+      ${topBar('', '', rightHtml)}
+      <div class="page">
+        ${!S.dbReady ? `<div class="banner banner-info"><span class="spin">⟳</span> Connecting to cloud…</div>` : ''}
+        ${S.dbError  ? `<div class="banner banner-err">⚠ Database error: ${esc(S.dbError)}</div>` : ''}
+        <div class="stats-row">
+          ${statCard('Sessions',  ss.length, '',               'var(--teal)')}
+          ${statCard('Total kWh', totalKwh,  'consumed',       'var(--blue)')}
+          ${statCard('Total km',  totalKm,   'driven',         'var(--amber)')}
+          ${statCard('km / kWh',  avgEff,    'avg efficiency', 'var(--purple)')}
+        </div>
+        <div class="streak">
+          <div class="streak-lbl">14-Day Charge Activity</div>
+          <div class="streak-dots">${streak}</div>
+        </div>
+        ${cards}
+      </div>
+      ${S.isEditor ? `<button class="fab" id="fab-btn">+</button>` : ''}
+    </div>`;
+}
+
+// ── RENDER & BIND ─────────────────────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  if (S.view === 'login')     { app.innerHTML = viewLogin();     bindLogin();     return; }
+  if (S.view === 'changePin') { app.innerHTML = viewChangePin(); bindChangePin(); return; }
+  if (S.view === 'form')      { app.innerHTML = viewForm();      bindForm();      return; }
+  app.innerHTML = viewTable();
+  bindTable();
+}
+
+function bindLogin() {
+  const inp = document.getElementById('pin-inp');
+  const btn = document.getElementById('login-btn');
+  if (inp) { inp.focus(); inp.addEventListener('input', e => { S.pinInput = e.target.value; S.pinError = ''; }); inp.addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); }); }
+  if (btn) btn.addEventListener('click', doLogin);
+}
+
+function bindChangePin() {
+  const np  = document.getElementById('new-pin');
+  const cp  = document.getElementById('conf-pin');
+  const btn = document.getElementById('save-pin');
+  if (np)  np.addEventListener('input',   e => { S.newPin = e.target.value; S.pinMsg = ''; render(); });
+  if (cp)  cp.addEventListener('input',   e => { S.confirmPin = e.target.value; S.pinMsg = ''; render(); });
+  if (cp)  cp.addEventListener('keydown', e => { if (e.key==='Enter') doChangePin(); });
+  if (btn) btn.addEventListener('click', doChangePin);
+}
+
+function bindForm() {
+  const fd  = document.getElementById('f-date');
+  const fn  = document.getElementById('f-notes');
+  const sb  = document.getElementById('save-btn');
+  const db2 = document.getElementById('del-btn');
+  const cd  = document.getElementById('conf-del');
+  if (fd)  fd.addEventListener('change', e => fSet('date', e.target.value));
+  if (fn)  fn.addEventListener('input',  e => fSet('notes', e.target.value));
+  if (sb)  sb.addEventListener('click',  doSave);
+  if (db2) db2.addEventListener('click', () => set({ delConfirm: true }));
+  if (cd)  cd.addEventListener('click',  doDelete);
+}
+
+function bindTable() {
+  const exp = document.getElementById('exp-btn');
+  const fab = document.getElementById('fab-btn');
+  if (exp) exp.addEventListener('click', doExport);
+  if (fab) fab.addEventListener('click', openNew);
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+render();
+init();
+</script>
+</body>
+</html>
