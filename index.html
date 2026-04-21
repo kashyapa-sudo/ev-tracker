@@ -314,7 +314,18 @@ function doExport() {
 function goTable()     { set({ view: 'table',     pinError: '', formError: '' }); }
 function goLogin()     { S.pinInput = ''; S.pinError = ''; set({ view: 'login' }); }
 function goChangePin() { S.newPin = ''; S.confirmPin = ''; S.pinMsg = ''; set({ view: 'changePin' }); }
-function fSet(k, v)    { S.form[k] = v; S.formError = ''; render(); }
+function fSet(k, v) {
+  S.form[k] = v;
+  S.formError = '';
+  const fe = document.getElementById('form-err');
+  if (fe) fe.style.display = 'none';
+  const total  = calcTotal(S.form);
+  const kwhpct = calcKwhPct(S.form);
+  const elT = document.getElementById('ro-total');
+  const elK = document.getElementById('ro-kwhpct');
+  if (elT) elT.textContent = total  != null ? total  + ' kWh' : '—';
+  if (elK) elK.textContent = kwhpct != null ? String(kwhpct)  : '—';
+}
 
 // ── RENDER HELPERS ────────────────────────────────────────────────────────────
 const chip = (label, val, color) =>
@@ -343,8 +354,8 @@ const field = (label, inputHtml, hint = '') =>
     ${hint ? `<div class="fhint">${hint}</div>` : ''}
   </div>`;
 
-const inp = (type, key, val, ph = '') =>
-  `<input type="${type}" ${type==='number'?'inputmode="decimal"':''} class="inp"
+const inp = (key, val, ph = '') =>
+  `<input type="text" inputmode="decimal" class="inp"
     value="${esc(String(val ?? ''))}" placeholder="${ph}"
     oninput="fSet('${key}',this.value)" />`;
 
@@ -402,18 +413,18 @@ function viewForm() {
       <div class="page"><div class="inner">
         ${field('Date *', `<input type="date" class="inp" id="f-date" value="${esc(f.date||'')}" />`)}
         <div class="g2">
-          ${field('Start Charge % *', inp('number','start_charge',f.start_charge,'e.g. 20'))}
-          ${field('End Charge % *',   inp('number','end_charge',  f.end_charge,  'e.g. 85'))}
-          ${field('Start Power (kWh) *', inp('number','start_power',f.start_power,'meter reading'))}
-          ${field('End Power (kWh) *',   inp('number','end_power',  f.end_power,  'after charge'))}
+          ${field('Start Charge % *', inp('start_charge',f.start_charge,'e.g. 20'))}
+          ${field('End Charge % *',   inp('end_charge',f.end_charge,'e.g. 85'))}
+          ${field('Start Power (kWh) *', inp('start_power',f.start_power,'meter reading'))}
+          ${field('End Power (kWh) *',   inp('end_power',f.end_power,'after charge'))}
         </div>
         <div class="g2">
-          ${field('Total kWh — auto', `<div class="ro">${total != null ? total + ' kWh' : '—'}</div>`)}
-          ${field('kWh / % — auto',   `<div class="ro">${kwhpct != null ? kwhpct : '—'}</div>`)}
+          ${field('Total kWh — auto', `<div class="ro" id="ro-total">${total != null ? total + ' kWh' : '—'}</div>`)}
+          ${field('kWh / % — auto',   `<div class="ro" id="ro-kwhpct">${kwhpct != null ? kwhpct : '—'}</div>`)}
         </div>
-        ${field('km Driven (since last charge)', inp('number','km_driven',f.km_driven,'e.g. 230'), 'Derives km/kWh efficiency for this session')}
+        ${field('km Driven (since last charge)', inp('km_driven',f.km_driven,'e.g. 230'), 'Derives km/kWh efficiency for this session')}
         ${field('Notes', `<textarea class="inp" id="f-notes" placeholder="Weather, location, driving conditions…">${esc(f.notes||'')}</textarea>`)}
-        ${S.formError ? `<div class="ferr">${esc(S.formError)}</div>` : ''}
+        ${S.formError ? `<div class="ferr" id="form-err">${esc(S.formError)}</div>` : ''}
         <div class="brow">
           <button class="btn bg" onclick="goTable()">Cancel</button>
           <button class="btn bp" id="save-btn" ${S.saving?'disabled':''}>${S.saving?'Saving…':(sel?'Save Changes':'Add Session')}</button>
@@ -465,7 +476,7 @@ function viewTable() {
   const rightHtml = `
     <button class="bico" id="exp-btn">↓ CSV</button>
     ${S.isEditor
-      ? `<button style="background:none;border:none;color:var(--teal);font-size:12px;font-family:var(--mono);cursor:pointer;padding:6px 4px" onclick="goChangePin()">✓ Editor</button>`
+      ? `<button class="bico" onclick="goChangePin()" style="color:var(--teal);border-color:var(--teal)30">✓ PIN</button>`
       : `<button class="bico" onclick="goLogin()">🔒 Login</button>`}`;
 
   return `
